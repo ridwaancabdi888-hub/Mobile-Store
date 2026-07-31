@@ -29,13 +29,17 @@ Authentication and payments are front-end demonstrations stored in the browser w
 
 No dependencies or build process are required. Because service workers do not run reliably from `file://` URLs, use a local HTTP server when testing installation or offline PWA behavior.
 
-From the repository folder, run either:
+From the repository folder, run the command for your operating system:
 
 ```bash
-python -m http.server 8000
+# macOS or Linux
+python3 -m http.server 8000
+
+# Windows Command Prompt or PowerShell
+py -m http.server 8000
 ```
 
-or:
+Alternatively, if Node.js is installed, run:
 
 ```bash
 npx serve .
