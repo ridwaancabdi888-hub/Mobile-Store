@@ -61,4 +61,4 @@ This is a static site. On Vercel, use the project root as the root directory and
 
 ## Install on a phone
 
-Open the live site in Chrome or Samsung Internet and tap **Install Mobile App**. If the browser does not show the prompt, open its menu and choose **Add to Home screen** or **Install app**.
+Open the live site in Chrome or Samsung Internet and tap **Install App**. If the browser does not show the prompt, open its menu and choose **Add to Home screen** or **Install app**.
