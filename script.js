@@ -35,9 +35,12 @@ let selected = null;
 let detailChoice = {storage:'',color:'',qty:1};
 let goldShown = false;
 let installPromptEvent = null;
+let activeSheetTrigger = null;
+let sheetTitleSequence = 0;
 const app = document.getElementById('appView');
 const nav = document.getElementById('bottomNav');
 const modalRoot = document.getElementById('modalRoot');
+const installButton = document.getElementById('pwaInstallFab');
 
 const icon = (name, cls='') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
 const money = n => `$${Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -58,7 +61,6 @@ function init(){
   if(!user){state.session=null;renderAuth('signin')}
   else if(['admin','manager'].includes(user.role)) setPage('admin')
   else {renderNav();renderSkeleton();setTimeout(()=>setPage('home'),650)}
-  window.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 }
 function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
 function updateInstallUI(){const button=document.getElementById('pwaInstallFab');if(button)button.hidden=isStandalone()}
@@ -297,8 +299,39 @@ function showExportData(){const data=JSON.stringify({products:PRODUCTS,users:sta
 function copyExportData(){const el=document.getElementById('exportData');el.select();try{document.execCommand('copy');toast('Store data copied')}catch{toast('Select and copy the JSON manually','!')}}
 
 function infoSheet(title,text){openSheet(`<div class="sheet-head"><h2>${safe(title)}</h2><button class="icon-btn close" onclick="closeSheet()">${icon('x')}</button></div><p style="color:var(--muted);font-size:12px;line-height:1.7">${safe(text)}</p><button class="primary-btn" onclick="closeSheet()">Got it</button>`)}
-function openSheet(content){modalRoot.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div>${content}</div>`;modalRoot.onclick=e=>{if(e.target===modalRoot)closeSheet()};setTimeout(()=>modalRoot.querySelector('button,input')?.focus(),100)}
-function closeSheet(){modalRoot.innerHTML='';modalRoot.onclick=null}
+function sheetFocusable(){
+  return [...modalRoot.querySelectorAll('button,[href],input,select,textarea,[tabindex]')]
+    .filter(el=>!el.disabled&&!el.hidden&&el.getAttribute('tabindex')!=='-1');
+}
+function handleSheetKeydown(event){
+  if(!modalRoot.firstElementChild)return;
+  if(event.key==='Escape'){event.preventDefault();closeSheet();return}
+  if(event.key!=='Tab')return;
+  const focusable=sheetFocusable();
+  if(!focusable.length){event.preventDefault();modalRoot.querySelector('.sheet')?.focus();return}
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+}
+function openSheet(content){
+  activeSheetTrigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  modalRoot.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" tabindex="-1"><div class="grabber" aria-hidden="true"></div>${content}</div>`;
+  const sheet=modalRoot.querySelector('.sheet'),title=sheet.querySelector('h2');
+  if(title){title.id=title.id||`sheet-title-${++sheetTitleSequence}`;sheet.setAttribute('aria-labelledby',title.id)}
+  else sheet.setAttribute('aria-label','Dialog');
+  [app,nav,installButton].forEach(el=>el?.setAttribute('inert',''));
+  modalRoot.onclick=event=>{if(event.target===modalRoot)closeSheet()};
+  modalRoot.onkeydown=handleSheetKeydown;
+  requestAnimationFrame(()=>{(sheetFocusable()[0]||sheet).focus()});
+}
+function closeSheet(){
+  if(!modalRoot.firstElementChild)return;
+  const trigger=activeSheetTrigger;
+  modalRoot.innerHTML='';modalRoot.onclick=null;modalRoot.onkeydown=null;
+  [app,nav,installButton].forEach(el=>el?.removeAttribute('inert'));
+  activeSheetTrigger=null;
+  if(trigger?.isConnected)trigger.focus();
+}
 function toast(message,mark='✓'){const el=document.createElement('div');el.className='toast';el.innerHTML=`<i>${mark}</i><span>${safe(message)}</span>`;document.getElementById('toastRegion').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(-10px)';setTimeout(()=>el.remove(),250)},2300)}
 function confetti(){const colors=['#f2b72b','#db4f16','#ffdf83','#8b3512'];for(let i=0;i<24;i++){const s=document.createElement('i');s.style.cssText=`position:fixed;z-index:90;left:${45+Math.random()*10}%;top:42%;width:${4+Math.random()*5}px;height:${6+Math.random()*7}px;background:${colors[i%colors.length]};border-radius:2px;pointer-events:none;transition:transform 1.1s cubic-bezier(.2,.7,.3,1),opacity 1.1s`;document.body.appendChild(s);requestAnimationFrame(()=>{s.style.transform=`translate(${(Math.random()-.5)*340}px,${Math.random()*420-210}px) rotate(${Math.random()*600}deg)`;s.style.opacity='0'});setTimeout(()=>s.remove(),1200)}}
 
