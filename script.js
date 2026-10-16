@@ -24,11 +24,10 @@ const DEFAULTS = {
   ],
   profile:{name:'Ridwaan',email:'ridwaan@example.com',phone:'',address:'',city:'Hargeisa'}
 };
-const state = {...DEFAULTS, ...readJSON('rms_state',{})};
-state.profile = {...DEFAULTS.profile,...(state.profile||{})};
+const state = StoreState.normalizeSavedStoreState(readJSON('rms_state',{}), DEFAULTS, SEED_PRODUCTS);
 state.users = Array.isArray(state.users) ? state.users : DEFAULTS.users.map(u=>({...u}));
 if(!state.users.some(u=>u.role==='admin')) state.users.unshift({...DEFAULTS.users[0]});
-let PRODUCTS = Array.isArray(state.products)&&state.products.length ? state.products : SEED_PRODUCTS.map(p=>({...p}));
+let PRODUCTS = state.products;
 state.products = PRODUCTS;
 let shop = {query:'',brand:'All',maxPrice:1500,availability:'all',sort:'featured'};
 let selected = null;

@@ -3,6 +3,7 @@ const APP_SHELL = [
   '/',
   '/index.html',
   '/style.css',
+  '/state-normalizer.js',
   '/script.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import stateNormalizer from '../state-normalizer.js';
 
 const html = readFileSync('index.html', 'utf8');
 const script = readFileSync('script.js', 'utf8');
@@ -15,13 +16,13 @@ function pngDimensions(path) {
 }
 
 test('JavaScript sources pass Node syntax checks', () => {
-  for (const file of ['script.js', 'sw.js']) {
+  for (const file of ['state-normalizer.js', 'script.js', 'sw.js']) {
     execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
   }
 });
 
 test('the HTML entry point references existing local assets', () => {
-  for (const asset of ['manifest.webmanifest', 'icons/icon-192.png', 'style.css', 'script.js']) {
+  for (const asset of ['manifest.webmanifest', 'icons/icon-192.png', 'style.css', 'state-normalizer.js', 'script.js']) {
     assert.ok(html.includes(asset), `index.html must reference ${asset}`);
     assert.ok(existsSync(asset), `${asset} must exist`);
   }
@@ -47,6 +48,7 @@ test('the service-worker app shell contains every core local asset', () => {
   for (const asset of [
     '/index.html',
     '/style.css',
+    '/state-normalizer.js',
     '/script.js',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
@@ -56,6 +58,67 @@ test('the service-worker app shell contains every core local asset', () => {
     assert.ok(serviceWorker.includes(`'${asset}'`), `app shell must cache ${asset}`);
     assert.ok(existsSync(asset.slice(1)), `${asset} must resolve to a repository file`);
   }
+});
+
+test('saved shopping state is repaired without discarding valid data', () => {
+  const products = [{ id: 1, name: 'Phone' }, { id: 2, name: 'Tablet' }];
+  const defaults = {
+    cart: [], wishlist: [], orders: [], products, points: 100,
+    theme: 'light', language: 'English', notifications: true,
+    biometric: false, promo: '', usePoints: false,
+    profile: { name: 'Demo', email: '', phone: '', address: '', city: 'Hargeisa' },
+  };
+  const saved = {
+    cart: [
+      { key: '1-a-black', id: '1', qty: 2.8, storage: '128GB', color: 'Black' },
+      { key: '99-a-black', id: 99, qty: 1, storage: '128GB', color: 'Black' },
+      { key: '2-a-black', id: 2, qty: 0, storage: '128GB', color: 'Black' },
+    ],
+    wishlist: [1, '1', 2, 99],
+    points: 275,
+    profile: { name: 'Ridwaan', city: 'Burco' },
+    theme: 'dark',
+  };
+
+  const result = stateNormalizer.normalizeSavedStoreState(saved, defaults, products);
+
+  assert.deepEqual(result.cart, [
+    { key: '1-a-black', id: 1, qty: 2, storage: '128GB', color: 'Black' },
+  ]);
+  assert.deepEqual(result.wishlist, [1, 2]);
+  assert.equal(result.points, 275);
+  assert.deepEqual(result.profile, {
+    name: 'Ridwaan', email: '', phone: '', address: '', city: 'Burco',
+  });
+  assert.equal(result.theme, 'dark');
+});
+
+test('invalid saved shopping state falls back to safe defaults', () => {
+  const products = [{ id: 1, name: 'Phone' }];
+  const defaults = {
+    cart: [], wishlist: [], orders: [], products, points: 100,
+    theme: 'light', language: 'English', notifications: true,
+    biometric: false, promo: '', usePoints: false,
+    profile: { name: 'Demo', email: '', phone: '', address: '', city: 'Hargeisa' },
+  };
+  const result = stateNormalizer.normalizeSavedStoreState({
+    cart: {}, wishlist: 'broken', orders: null, products: [], points: -5,
+    profile: 'broken', theme: 'sepia', language: 'Klingon',
+    notifications: 'yes', biometric: 1, promo: 42, usePoints: 'true',
+  }, defaults, products);
+
+  assert.deepEqual(result.cart, []);
+  assert.deepEqual(result.wishlist, []);
+  assert.deepEqual(result.orders, []);
+  assert.deepEqual(result.products, products);
+  assert.equal(result.points, 100);
+  assert.deepEqual(result.profile, defaults.profile);
+  assert.equal(result.theme, 'light');
+  assert.equal(result.language, 'English');
+  assert.equal(result.notifications, true);
+  assert.equal(result.biometric, false);
+  assert.equal(result.promo, '');
+  assert.equal(result.usePoints, false);
 });
 
 test('offline handling is limited to same-origin GET requests', () => {
