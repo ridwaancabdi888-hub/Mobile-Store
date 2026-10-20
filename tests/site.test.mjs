@@ -121,6 +121,61 @@ test('invalid saved shopping state falls back to safe defaults', () => {
   assert.equal(result.usePoints, false);
 });
 
+test('saved products are normalized before the storefront uses them', () => {
+  const seedProducts = [{ id: 1, name: 'Seed phone' }];
+  const savedProducts = [
+    {
+      id: '22', name: '  Custom Phone  ', brand: ' Demo ', image: ' phone.jpg ',
+      price: '499.50', oldPrice: '400', discount: 140, rating: 8, reviews: 4.9,
+      storage: [' 128GB ', '128GB', '', null],
+      colors: [['Graphite', '#444'], ['Unsafe', 'red; display:none'], ['Broken']],
+      stock: false, description: '  Saved product  ', points: '75.9',
+    },
+    { id: 22, name: 'Duplicate id' },
+    { id: 23, name: 'Missing required product fields' },
+  ];
+
+  const [product] = stateNormalizer.normalizeProducts(savedProducts, seedProducts);
+
+  assert.deepEqual(product, {
+    id: 22, name: 'Custom Phone', brand: 'Demo', image: 'phone.jpg',
+    price: 499.5, oldPrice: 499.5, discount: 100, rating: 5, reviews: 4,
+    storage: ['128GB'], colors: [['Graphite', '#444']], stock: false,
+    description: 'Saved product', points: 75,
+  });
+});
+
+test('an unusable saved catalog falls back to the seed catalog', () => {
+  const seedProducts = [{ id: 1, name: 'Seed phone' }];
+  const result = stateNormalizer.normalizeProducts([
+    { id: 8, name: 'No variants', brand: 'Demo', price: 100 },
+    null,
+  ], seedProducts);
+
+  assert.deepEqual(result, seedProducts);
+  assert.notEqual(result, seedProducts);
+});
+
+test('cart recovery rejects non-finite quantities', () => {
+  const products = [{ id: 1, name: 'Phone' }];
+  const defaults = {
+    cart: [], wishlist: [], orders: [], products, points: 100,
+    theme: 'light', language: 'English', notifications: true,
+    biometric: false, promo: '', usePoints: false,
+    profile: { name: 'Demo', email: '', phone: '', address: '', city: 'Hargeisa' },
+  };
+  const result = stateNormalizer.normalizeSavedStoreState({
+    cart: [
+      { key: 'valid', id: 1, qty: '3', storage: '128GB', color: 'Black' },
+      { key: 'infinite', id: 1, qty: Infinity, storage: '128GB', color: 'Black' },
+    ],
+  }, defaults, products);
+
+  assert.deepEqual(result.cart, [
+    { key: 'valid', id: 1, qty: 3, storage: '128GB', color: 'Black' },
+  ]);
+});
+
 test('offline handling is limited to same-origin GET requests', () => {
   assert.match(serviceWorker, /event\.request\.method !== 'GET'/);
   assert.match(serviceWorker, /url\.origin !== self\.location\.origin/);
