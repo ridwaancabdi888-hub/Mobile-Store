@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import renderSafety from '../render-safety.js';
 import stateNormalizer from '../state-normalizer.js';
 
 const html = readFileSync('index.html', 'utf8');
@@ -16,13 +17,13 @@ function pngDimensions(path) {
 }
 
 test('JavaScript sources pass Node syntax checks', () => {
-  for (const file of ['state-normalizer.js', 'script.js', 'sw.js']) {
+  for (const file of ['render-safety.js', 'state-normalizer.js', 'script.js', 'sw.js']) {
     execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
   }
 });
 
 test('the HTML entry point references existing local assets', () => {
-  for (const asset of ['manifest.webmanifest', 'icons/icon-192.png', 'style.css', 'state-normalizer.js', 'script.js']) {
+  for (const asset of ['manifest.webmanifest', 'icons/icon-192.png', 'style.css', 'render-safety.js', 'state-normalizer.js', 'script.js']) {
     assert.ok(html.includes(asset), `index.html must reference ${asset}`);
     assert.ok(existsSync(asset), `${asset} must exist`);
   }
@@ -48,6 +49,7 @@ test('the service-worker app shell contains every core local asset', () => {
   for (const asset of [
     '/index.html',
     '/style.css',
+    '/render-safety.js',
     '/state-normalizer.js',
     '/script.js',
     '/manifest.webmanifest',
@@ -58,6 +60,34 @@ test('the service-worker app shell contains every core local asset', () => {
     assert.ok(serviceWorker.includes(`'${asset}'`), `app shell must cache ${asset}`);
     assert.ok(existsSync(asset.slice(1)), `${asset} must resolve to a repository file`);
   }
+});
+
+test('catalog text is escaped before it is rendered as HTML', () => {
+  assert.equal(
+    renderSafety.escapeHtml(`<img src=x onerror="alert('x')"> & more`),
+    '&lt;img src=x onerror=&quot;alert(&#39;x&#39;)&quot;&gt; &amp; more',
+  );
+});
+
+test('inline catalog values remain a single escaped JavaScript string', () => {
+  const original = `128\" onclick=\"alert('x')\nGB`;
+  const encoded = renderSafety.inlineString(original);
+  assert.doesNotMatch(encoded, /[<>]/);
+  assert.doesNotMatch(encoded, /"/);
+  const decoded = encoded
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&gt;', '>')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&amp;', '&');
+  assert.equal(JSON.parse(decoded), original);
+});
+
+test('catalog images only use HTTP(S) or relative URLs', () => {
+  assert.equal(renderSafety.safeImageUrl('https://example.com/phone.jpg?a=1&b=2'), 'https://example.com/phone.jpg?a=1&amp;b=2');
+  assert.equal(renderSafety.safeImageUrl('/images/phone.jpg'), '/images/phone.jpg');
+  assert.equal(renderSafety.safeImageUrl('javascript:alert(1)'), '');
+  assert.equal(renderSafety.safeImageUrl('data:image/svg+xml,<svg onload=alert(1)>'), '');
 });
 
 test('saved shopping state is repaired without discarding valid data', () => {
