@@ -24,7 +24,8 @@ const DEFAULTS = {
   ],
   profile:{name:'Ridwaan',email:'ridwaan@example.com',phone:'',address:'',city:'Hargeisa'}
 };
-const state = StoreState.normalizeSavedStoreState(readJSON('rms_state',{}), DEFAULTS, SEED_PRODUCTS);
+const persistentStore = StoreStorage.createJsonStorage(()=>localStorage);
+const state = StoreState.normalizeSavedStoreState(persistentStore.read('rms_state',{}), DEFAULTS, SEED_PRODUCTS);
 state.users = Array.isArray(state.users) ? state.users : DEFAULTS.users.map(u=>({...u}));
 if(!state.users.some(u=>u.role==='admin')) state.users.unshift({...DEFAULTS.users[0]});
 let PRODUCTS = state.products;
@@ -36,6 +37,7 @@ let goldShown = false;
 let installPromptEvent = null;
 let activeSheetTrigger = null;
 let sheetTitleSequence = 0;
+let persistenceWarningShown = false;
 const app = document.getElementById('appView');
 const nav = document.getElementById('bottomNav');
 const modalRoot = document.getElementById('modalRoot');
@@ -44,8 +46,15 @@ const installButton = document.getElementById('pwaInstallFab');
 const icon = (name, cls='') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
 const money = n => `$${Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const product = id => PRODUCTS.find(p=>p.id===Number(id));
-function readJSON(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
-function save(){localStorage.setItem('rms_state',JSON.stringify({...state,page:'home'}));document.body.classList.toggle('dark',state.theme==='dark');document.querySelector('meta[name="theme-color"]').content=state.theme==='dark'?'#171210':'#fbf5ef'}
+function save(){
+  const saved = persistentStore.write('rms_state',{...state,page:'home'});
+  document.body.classList.toggle('dark',state.theme==='dark');
+  document.querySelector('meta[name="theme-color"]').content=state.theme==='dark'?'#171210':'#fbf5ef';
+  if(!saved&&!persistenceWarningShown){
+    persistenceWarningShown=true;
+    toast('Changes are available for this session but could not be saved on this device.','!');
+  }
+}
 const safe = StoreRender.escapeHtml;
 const inlineString = StoreRender.inlineString;
 const safeImageUrl = StoreRender.safeImageUrl;

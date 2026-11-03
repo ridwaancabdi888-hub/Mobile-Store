@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import renderSafety from '../render-safety.js';
 import stateNormalizer from '../state-normalizer.js';
+import storageAdapter from '../storage-adapter.js';
 
 const html = readFileSync('index.html', 'utf8');
 const script = readFileSync('script.js', 'utf8');
@@ -17,13 +18,13 @@ function pngDimensions(path) {
 }
 
 test('JavaScript sources pass Node syntax checks', () => {
-  for (const file of ['render-safety.js', 'state-normalizer.js', 'script.js', 'sw.js']) {
+  for (const file of ['storage-adapter.js', 'render-safety.js', 'state-normalizer.js', 'script.js', 'sw.js']) {
     execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
   }
 });
 
 test('the HTML entry point references existing local assets', () => {
-  for (const asset of ['manifest.webmanifest', 'icons/icon-192.png', 'style.css', 'render-safety.js', 'state-normalizer.js', 'script.js']) {
+  for (const asset of ['manifest.webmanifest', 'icons/icon-192.png', 'style.css', 'storage-adapter.js', 'render-safety.js', 'state-normalizer.js', 'script.js']) {
     assert.ok(html.includes(asset), `index.html must reference ${asset}`);
     assert.ok(existsSync(asset), `${asset} must exist`);
   }
@@ -49,6 +50,7 @@ test('the service-worker app shell contains every core local asset', () => {
   for (const asset of [
     '/index.html',
     '/style.css',
+    '/storage-adapter.js',
     '/render-safety.js',
     '/state-normalizer.js',
     '/script.js',
@@ -60,6 +62,32 @@ test('the service-worker app shell contains every core local asset', () => {
     assert.ok(serviceWorker.includes(`'${asset}'`), `app shell must cache ${asset}`);
     assert.ok(existsSync(asset.slice(1)), `${asset} must resolve to a repository file`);
   }
+});
+
+test('saved state reads fall back when browser storage is unavailable or malformed', () => {
+  const unavailable = storageAdapter.createJsonStorage(() => {
+    throw new DOMException('Access denied', 'SecurityError');
+  });
+  const malformed = storageAdapter.createJsonStorage({
+    getItem: () => '{not valid JSON',
+  });
+
+  assert.deepEqual(unavailable.read('state', { cart: [] }), { cart: [] });
+  assert.deepEqual(malformed.read('state', { cart: [] }), { cart: [] });
+});
+
+test('saved state writes report failures instead of crashing the storefront', () => {
+  let stored;
+  const available = storageAdapter.createJsonStorage({
+    setItem: (key, value) => { stored = [key, value]; },
+  });
+  const full = storageAdapter.createJsonStorage({
+    setItem: () => { throw new DOMException('Quota exceeded', 'QuotaExceededError'); },
+  });
+
+  assert.equal(available.write('state', { theme: 'dark' }), true);
+  assert.deepEqual(stored, ['state', '{"theme":"dark"}']);
+  assert.equal(full.write('state', { theme: 'dark' }), false);
 });
 
 test('catalog text is escaped before it is rendered as HTML', () => {
