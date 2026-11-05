@@ -1,0 +1,14 @@
+/* Readability floor, loaded after style.css: keeps body copy, labels and controls at 11px or larger and badges at 10px or larger.
+   Many rules in style.css use 6-9px text, which is too small to read on a real phone. */
+.nav-item,.nav-item span,.small-action,.level-card p,.settings-copy span,.signup-cta small,.admin-welcome span,.admin-stats small,.admin-quick small,.admin-row small,.admin-empty p,.admin-filter-line button,.admin-product-copy small,.payment-overview span,.payment-overview small,.order-card-head small,.order-customer b,.order-customer small,.order-customer em,.order-controls label,.order-detail-btn,.order-detail-hero small,.admin-user-copy small,.system-card span,.system-card small,.demo-credentials{font-size:11px}
+.hero .tag,.brand,.rating,.offer-card span,.cart-meta,.ring-copy span,.benefit span,.activity span,.profile-card p,.profile-card button,.section-label,.field label,.error-text,.gold-benefit,.auth-brand small,.auth-kicker,.auth-field>span,.auth-options,.auth-consent,.auth-error,.auth-divider,.admin-demo-link,.admin-head>div>span,.admin-welcome p,.admin-quick b,.admin-filter-line>span,.admin-checkbox,.admin-user-copy b,.pwa-install-fab{font-size:11px}
+.rewards-mini p,.filter-summary span,.sort-select,.promo-box button,.reward-use,.rewards-label,.level-progress-text,.activity-points,.language-select,.payment-option,.check-chip,.toast,.social-row button,.auth-switch,.admin-add,.admin-row b,.admin-product-copy b,.order-card-head b,.install-guide>p,.install-guide ol{font-size:12px}
+.discount-badge,.nav-badge,.status-tag,.admin-user-copy b em,.admin-user-copy i{font-size:10px}
+.role-pill{font-size:10px!important}
+.demo-credentials{color:#7d6a5e}
+.dark .demo-credentials{color:var(--muted)}
+.order-controls select,.admin-user-controls select{font-size:11px}
+.admin-user-controls select{width:auto;min-width:78px}
+.admin-user-copy{min-width:0}.admin-user-copy small{max-width:100%}
+/* Touch browsers (notably iOS Safari) zoom the whole page when a focused field is under 16px. */
+@media (pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px}}
