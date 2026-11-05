@@ -1,8 +1,9 @@
-const CACHE_NAME = 'ridwaan-store-v2.1.4';
+const CACHE_NAME = 'ridwaan-store-v2.1.5';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/style.css',
+  '/readability.css',
   '/storage-adapter.js',
   '/render-safety.js',
   '/state-normalizer.js',
