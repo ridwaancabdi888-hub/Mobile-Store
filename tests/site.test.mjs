@@ -256,3 +256,16 @@ test('bottom sheets trap focus, isolate the page, and restore the trigger', () =
   assert.ok(script.includes("removeAttribute('inert')"));
   assert.ok(script.includes('if(trigger?.isConnected)trigger.focus()'));
 });
+
+test('SPA navigation identifies the current page without announcing the entire app', () => {
+  assert.doesNotMatch(html, /id=["']appShell["'][^>]*aria-live/);
+  assert.match(script, /aria-current="page"/);
+  assert.match(script, /function focusPageHeading\(\)/);
+  assert.match(script, /app\.querySelector\('h1'\)/);
+  assert.match(script, /heading\.focus\(\{preventScroll:true\}\)/);
+  assert.match(script, /focusPageHeading\(\)/);
+});
+
+test('the service-worker cache is refreshed for the navigation accessibility update', () => {
+  assert.match(serviceWorker, /ridwaan-store-v2\.1\.5/);
+});

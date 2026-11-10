@@ -99,13 +99,22 @@ function renderNav(){
   if(['admin','manager'].includes(user.role)){
     const tabs=[['home','Dashboard','admin'],['shop','Products','admin-products'],['cart','Orders','admin-orders'],['user','Users','admin-users'],['sliders','Settings','admin-settings']];
     nav.hidden=false;
-    nav.innerHTML=tabs.map(([ic,label,p])=>`<button class="nav-item ${state.page===p?'active':''}" onclick="setPage('${p}')" aria-label="${label}">${icon(ic)}<span>${label}</span></button>`).join('');
+    nav.innerHTML=tabs.map(([ic,label,p])=>`<button class="nav-item ${state.page===p?'active':''}" onclick="setPage('${p}')" aria-label="${label}" ${state.page===p?'aria-current="page"':''}>${icon(ic)}<span>${label}</span></button>`).join('');
     return;
   }
   const tabs=[['home','Home'],['shop','Shop'],['cart','Cart'],['gift','Rewards'],['user','Profile']];
   const pageMap={gift:'rewards',user:'profile'};
   const count=state.cart.reduce((s,i)=>s+i.qty,0);
-  nav.innerHTML=tabs.map(([ic,label])=>{const p=pageMap[ic]||ic;return `<button class="nav-item ${state.page===p?'active':''}" onclick="setPage('${p}')" aria-label="${label}">${icon(ic)}<span>${label}</span>${p==='cart'&&count?`<b class="nav-badge">${count}</b>`:''}</button>`}).join('');
+  nav.innerHTML=tabs.map(([ic,label])=>{const p=pageMap[ic]||ic;return `<button class="nav-item ${state.page===p?'active':''}" onclick="setPage('${p}')" aria-label="${label}" ${state.page===p?'aria-current="page"':''}>${icon(ic)}<span>${label}</span>${p==='cart'&&count?`<b class="nav-badge">${count}</b>`:''}</button>`}).join('');
+}
+function focusPageHeading(){
+  requestAnimationFrame(()=>{
+    const heading=app.querySelector('h1');
+    if(!heading)return;
+    heading.setAttribute('tabindex','-1');
+    heading.addEventListener('blur',()=>heading.removeAttribute('tabindex'),{once:true});
+    heading.focus({preventScroll:true});
+  });
 }
 function setPage(page){
   const user=currentUser();
@@ -115,7 +124,7 @@ function setPage(page){
   if(!['admin','manager'].includes(user.role)&&adminPages.includes(page)) page='home';
   state.page=page; selected=null; app.className='app-view'; nav.hidden=false; renderNav();
   ({home:renderHome,shop:renderShop,cart:renderCart,rewards:renderRewards,profile:renderProfile,admin:renderAdminDashboard,'admin-products':renderAdminProducts,'admin-orders':renderAdminOrders,'admin-users':renderAdminUsers,'admin-settings':renderAdminSettings}[page]||(isAdmin()?renderAdminDashboard:renderHome))();
-  app.scrollTop=0; window.scrollTo({top:0,behavior:'smooth'});
+  app.scrollTop=0; window.scrollTo({top:0,behavior:'smooth'}); focusPageHeading();
 }
 function header(title,action=''){return `<header class="page-head"><div><p class="eyebrow">Ridwaan Mobile Store</p><h1>${title}</h1></div>${action||`<div class="page-head-spacer"></div>`}</header>`}
 function imageMarkup(p,cls='product-media'){return `<div class="${cls}"><img src="${safeImageUrl(p.image)}" alt="${safe(p.name)}" loading="lazy" onerror="imageFallback(this)"></div>`}
