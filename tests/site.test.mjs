@@ -266,6 +266,14 @@ test('SPA navigation identifies the current page without announcing the entire a
   assert.match(script, /focusPageHeading\(\)/);
 });
 
-test('the service-worker cache is refreshed for the navigation accessibility update', () => {
-  assert.match(serviceWorker, /ridwaan-store-v2\.1\.5/);
+test('product cards use native controls without nesting interactive elements', () => {
+  assert.match(script, /class="product-image-button"/);
+  assert.match(script, /class="product-name-button"/);
+  assert.match(script, /aria-label="View details for \$\{productName\}"/);
+  assert.doesNotMatch(script, /class="product-media" onclick=/);
+  assert.doesNotMatch(script, /class="product-media"[^>]*role="button"/);
+});
+
+test('the service-worker cache is refreshed for the product-card accessibility update', () => {
+  assert.match(serviceWorker, /ridwaan-store-v2\.1\.6/);
 });
